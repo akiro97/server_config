@@ -23,10 +23,88 @@
 # 
 
 
+
+*******************************************************************************
+*********************** Github CI/CD Config ********************************************
+
 # Create github action
-- 
+- Create build and deploy .YAML file
+- configs with scritpt: |
+
+    # name: CI/CD Pipeline
+
+        on:
+        push:
+            branches:
+            - main
+
+        jobs:
+        build:
+            runs-on: ubuntu-latest
+            steps:
+            - uses: actions/checkout@v2
+            - name: Set up Node.js
+                uses: actions/setup-node@v2
+                with:
+                node-version: '16' # choose your node --version as git control
+            - run: npm install
+            # - run: npm test
+            - name: Build Docker Image
+                run: docker build -t ${{secrets.docker_username}}/storage-service-api .
+            - name: Log in to Docker Hub
+                run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "${{ secrets.DOCKER_USERNAME }}" --password-stdin
+            - name: Push Docker Image 
+                run: docker push ${{secrets.docker_username}}/storage-service-api
+            - name: Set up Kubernetes
+                uses: azure/setup-kubectl@v1
+                with:
+                version: 'v1.20.0'
+            - name: Deploy to Kubernetes
+               run: |
+                 kubectl apply -f infra/k8s.deployment.yaml
+                 kubectl apply -f infra/k8s.service.yaml
+
 
 # github action runner
+    - create github runner and config to your VPS
+    : Tab project settings
+    - Go to action > Select runner
+    - Go to server OS options > Choose OS > create server configs (Server side config)****** 
+    - scripts: |
+        - mkdir actions-runner; cd actions-runner # cd to your project run this command
+
+        # Download github runner packages
+        - Invoke-WebRequest -Uri https://github.com/actions/runner/releases/download/v2.319.1/actions-runner-win-x64-2.319.1.zip -OutFile actions-runner-win-x64-2.319.1.zip
+
+        # Validate github secret hashed with server access priavate key 
+        if((Get-FileHash -Path actions-runner-win-x64-2.319.1.zip -Algorithm SHA256).Hash.ToUpper() -ne '1c78c51d20b817fb639e0b0ab564cf0469d083ad543ca3d0d7a2cdad5723f3a7'.ToUpper()){ throw 'Computed checksum did not match' }
+
+        # Extract package zip and than install
+        Add-Type -AssemblyName System.IO.Compression.FileSystem ; [System.IO.Compression.ZipFile]::ExtractToDirectory("$PWD/actions-runner-win-x64-2.319.1.zip", "$PWD")
+
+    # Config Your Project on (Github branch)******
+    - ./config.cmd --url https://github.com/akiro97/storage-service-api --token BIOLXTNSWR77NDJLDI7WECTGYMNYU
+
+    # self-hosted runner command
+    - ./run.cmd
+
+
+    # Create new CD (Continue Deploy) .YAML
+    # name: CI/CD Pipeline
+
+        on:
+        push:
+            branches:
+            - main
+
+        jobs:
+        build:
+            runs-on: ubuntu-latest
+
+
+
+*******************************************************************************
+*********************** VPS Config ********************************************
 
 # Install node management package 
 - nvm / github
@@ -51,6 +129,10 @@
 - sudo chown -R username:username dir_name/ 
 	. ls -1a (check role user on dir)
 	
+
+*******************************************************************************
+*********************** Nginx Config ********************************************
+
 
 # Create nginx site available site_config_file_name
 - nano /etc/nginx/sites-available/file_name 
